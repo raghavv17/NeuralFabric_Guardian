@@ -1,0 +1,156 @@
+{
+  "nodes": [
+    {
+      "id": "GPU_0",
+      "type": "GPU",
+      "data": {
+        "type": "GPU",
+        "compute_capability": 8.6,
+        "memory_gb": 80,
+        "position": {"x": 100, "y": 100}
+      }
+    },
+    {
+      "id": "GPU_1",
+      "type": "GPU",
+      "data": {
+        "type": "GPU",
+        "compute_capability": 8.6,
+        "memory_gb": 80,
+        "position": {"x": 300, "y": 100}
+      }
+    },
+    {
+      "id": "GPU_2",
+      "type": "GPU",
+      "data": {
+        "type": "GPU",
+        "compute_capability": 8.6,
+        "memory_gb": 80,
+        "position": {"x": 500, "y": 100}
+      }
+    },
+    {
+      "id": "GPU_3",
+      "type": "GPU",
+      "data": {
+        "type": "GPU",
+        "compute_capability": 8.6,
+        "memory_gb": 80,
+        "position": {"x": 700, "y": 100}
+      }
+    },
+    {
+      "id": "SW_0",
+      "type": "Switch",
+      "data": {
+        "type": "Switch",
+        "ports": 32,
+        "position": {"x": 200, "y": 300}
+      }
+    },
+    {
+      "id": "SW_1",
+      "type": "Switch",
+      "data": {
+        "type": "Switch",
+        "ports": 32,
+        "position": {"x": 600, "y": 300}
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "GPU_0",
+      "target": "SW_0",
+      "id": "GPU_0-SW_0",
+      "type": "NVLink",
+      "data": {
+        "link_id": "GPU_0-SW_0",
+        "type": "NVLink",
+        "bandwidth_gbps": 400,
+        "base_latency_us": 1.0,
+        "utilization": 0.25,
+        "health_score": 1.0
+      }
+    },
+    {
+      "source": "GPU_1",
+      "target": "SW_0",
+      "id": "GPU_1-SW_0",
+      "type": "NVLink",
+      "data": {
+        "link_id": "GPU_1-SW_0",
+        "type": "NVLink",
+        "bandwidth_gbps": 400,
+        "base_latency_us": 0.8,
+        "utilization": 0.30,
+        "health_score": 0.95
+      }
+    },
+    {
+      "source": "GPU_2",
+      "target": "SW_1",
+      "id": "GPU_2-SW_1",
+      "type": "NVLink",
+      "data": {
+        "link_id": "GPU_2-SW_1",
+        "type": "NVLink",
+        "bandwidth_gbps": 600,
+        "base_latency_us": 0.6,
+        "utilization": 0.45,
+        "health_score": 0.88
+      }
+    },
+    {
+      "source": "GPU_3",
+      "target": "SW_1",
+      "id": "GPU_3-SW_1",
+      "type": "UALink",
+      "data": {
+        "link_id": "GPU_3-SW_1",
+        "type": "UALink",
+        "bandwidth_gbps": 200,
+        "base_latency_us": 1.5,
+        "utilization": 0.55,
+        "health_score": 0.75
+      }
+    },
+    {
+      "source": "SW_0",
+      "target": "SW_1",
+      "id": "SW_0-SW_1",
+      "type": "UALink",
+      "data": {
+        "link_id": "SW_0-SW_1",
+        "type": "UALink",
+        "bandwidth_gbps": 400,
+        "base_latency_us": 1.2,
+        "utilization": 0.35,
+        "health_score": 0.92
+      }
+    }
+  ],
+  "jobs": [
+    {
+      "id": "job-001",
+      "source": "GPU_0",
+      "destination": "GPU_2",
+      "route": ["GPU_0", "SW_0", "SW_1", "GPU_2"],
+      "type": "training",
+      "priority": "high",
+      "bandwidth_required": 50,
+      "created_at": 1703025600
+    },
+    {
+      "id": "job-002",
+      "source": "GPU_1",
+      "destination": "GPU_3",
+      "route": ["GPU_1", "SW_0", "SW_1", "GPU_3"],
+      "type": "inference",
+      "priority": "medium",
+      "bandwidth_required": 25,
+      "created_at": 1703025650
+    }
+  ]
+}

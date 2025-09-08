@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuralFabric Guardian - AI-Driven GPU Interconnect Health Dashboard</title>
+    
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.26.0/plotly.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="/static/css/style.css">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0f23, #1a1a2e);
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .header h1 {
+            color: #ffffff;
+            font-size: 2.5rem;
+            font-weight: 300;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #b0c4de;
+            font-size: 1.1rem;
+        }
+
+        .control-panel {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            margin: 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(255, 107, 107, 0.4);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #feca57, #ff9ff3);
+            color: #333;
+        }
+
+        .btn-warning:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(254, 202, 87, 0.4);
+        }
+
+        .status-indicator {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .status-running {
+            background: rgba(39, 174, 96, 0.2);
+            color: #27ae60;
+            border: 1px solid #27ae60;
+        }
+
+        .status-stopped {
+            background: rgba(231, 76, 60, 0.2);
+            color: #e74c3c;
+            border: 1px solid #e74c3c;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            margin: 20px;
+            min-height: 80vh;
+        }
+
+        .main-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .side-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .panel {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .panel-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .topology-container {
+            min-height: 400px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .kpi-card {
+            background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .kpi-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #64ffda;
+            margin-bottom: 5px;
+        }
+
+        .kpi-label {
+            font-size: 0.9rem;
+            color: #b0b0b0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .chart-container {
+            height: 250px;
+            margin-bottom: 20px;
+        }
+
+        .alerts-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .alert-item {
+            background: rgba(255,255,255,0.03);
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-left: 4px solid #ff6b6b;
+        }
+
+        .alert-item.warning {
+            border-left-color: #feca57;
+        }
+
+        .alert-item.info {
+            border-left-color: #54a0ff;
+        }
+
+        .alert-timestamp {
+            font-size: 0.8rem;
+            color: #888;
+            margin-bottom: 5px;
+        }
+
+        .alert-message {
+            font-size: 0.9rem;
+            color: #e0e0e0;
+        }
+
+        .routing-log {
+            max-height: 200px;
+            overflow-y: auto;
+            background: rgba(0,0,0,0.2);
+            border-radius: 6px;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 5px;
+            border-radius: 3px;
+        }
+
+        .log-entry.reroute {
+            background: rgba(255, 193, 7, 0.1);
+            color: #ffc107;
+        }
+
+        .chaos-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .select-field {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: #e0e0e0;
+            font-size: 0.9rem;
+        }
+
+        .select-field option {
+            background: #2a2a3e;
+            color: #e0e0e0;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #64ffda;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .node {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .node:hover {
+            stroke-width: 3px;
+        }
+
+        .link {
+            transition: all 0.3s ease;
+        }
+
+        .link.healthy {
+            stroke: #27ae60;
+            stroke-width: 2px;
+        }
+
+        .link.warning {
+            stroke: #f39c12;
+            stroke-width: 3px;
+        }
+
+        .link.critical {
+            stroke: #e74c3c;
+            stroke-width: 4px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0,0,0,0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            pointer-events: none;
+            z-index: 1000;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        @media (max-width: 1200px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .control-panel {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .btn {
+                width: 100%;
+            }
+            
+            .kpi-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🧠 NeuralFabric Guardian</h1>
+        <p>AI-Driven GPU Interconnect Health & Orchestration Control Plane</p>
+    </div>
+
+    <div class="control-panel">
+        <button id="startBtn" class="btn btn-primary">Start Monitoring</button>
+        <button id="stopBtn" class="btn btn-danger">Stop Monitoring</button>
+        <div id="systemStatus" class="status-indicator status-stopped">System Stopped</div>
+        
+        <select id="chaosType" class="select-field">
+            <option value="">Select Chaos Type</option>
+            <option value="link_degradation">Link Degradation</option>
+            <option value="sudden_failure">Sudden Failure</option>
+            <option value="intermittent_issues">Intermittent Issues</option>
+            <option value="congestion_storm">Congestion Storm</option>
+            <option value="thermal_event">Thermal Event</option>
+            <option value="cascade_failure">Cascade Failure</option>
+        </select>
+        
+        <button id="chaosBtn" class="btn btn-warning">Inject Chaos</button>
+        <button id="initTopologyBtn" class="btn btn-primary">Reinitialize Topology</button>
+    </div>
+
+    <div class="dashboard-grid">
+        <div class="main-panel">
+            <!-- Topology Visualization -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">🔗 Fabric Topology</h2>
+                    <div id="topologyLoading" class="loading" style="display: none;"></div>
+                </div>
+                <div id="topologyViz" class="topology-container"></div>
+            </div>
+
+            <!-- KPIs and Charts -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">📊 System Metrics</h2>
+                </div>
+                
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <div id="totalLinks" class="kpi-value">0</div>
+                        <div class="kpi-label">Total Links</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div id="healthyLinks" class="kpi-value">0</div>
+                        <div class="kpi-label">Healthy Links</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div id="healthPercentage" class="kpi-value">0%</div>
+                        <div class="kpi-label">Health %</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div id="avgLatency" class="kpi-value">0ms</div>
+                        <div class="kpi-label">Avg Latency</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div id="avgUtilization" class="kpi-value">0%</div>
+                        <div class="kpi-label">Avg Utilization</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div id="activeAlerts" class="kpi-value">0</div>
+                        <div class="kpi-label">Active Alerts</div>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="metricsChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="side-panel">
+            <!-- Anomaly Alerts -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">⚠️ Anomaly Alerts</h2>
+                    <span id="alertCount" class="status-indicator status-running">0 Active</span>
+                </div>
+                <div id="alertsList" class="alerts-list">
+                    <div style="text-align: center; color: #888; margin-top: 50px;">
+                        No alerts detected
+                    </div>
+                </div>
+            </div>
+
+            <!-- Routing Decisions -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">🔄 Routing Decisions</h2>
+                    <span id="routingCount" class="status-indicator status-running">0 Total</span>
+                </div>
+                <div id="routingLog" class="routing-log">
+                    <div style="text-align: center; color: #888; margin-top: 30px;">
+                        No routing decisions yet
+                    </div>
+                </div>
+            </div>
+
+            <!-- Health Distribution -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">💊 Health Distribution</h2>
+                </div>
+                <div class="chart-container">
+                    <canvas id="healthChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/static/js/topology.js"></script>
+    <script src="/static/js/charts.js"></script>
+    
+    <script>
+        // Global state
+        let systemRunning = false;
+        let updateInterval = null;
+        let metricsChart = null;
+        let healthChart = null;
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeCharts();
+            loadTopology();
+            setupEventListeners();
+            
+            // Start periodic updates
+            startUpdates();
+        });
+
+        function setupEventListeners() {
+            document.getElementById('startBtn').addEventListener('click', startSystem);
+            document.getElementById('stopBtn').addEventListener('click', stopSystem);
+            document.getElementById('chaosBtn').addEventListener('click', injectChaos);
+            document.getElementById('initTopologyBtn').addEventListener('click', reinitializeTopology);
+        }
+
+        function startSystem() {
+            fetch('/api/system/start', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        systemRunning = true;
+                        updateSystemStatus();
+                        showNotification('System started successfully', 'success');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error starting system:', error);
+                    showNotification('Failed to start system', 'error');
+                });
+        }
+
+        function stopSystem() {
+            fetch('/api/system/stop', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        systemRunning = false;
+                        updateSystemStatus();
+                        showNotification('System stopped', 'info');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error stopping system:', error);
+                    showNotification('Failed to stop system', 'error');
+                });
+        }
+
+        function injectChaos() {
+            const chaosType = document.getElementById('chaosType').value;
+            if (!chaosType) {
+                showNotification('Please select a chaos type', 'warning');
+                return;
+            }
+
+            fetch('/api/chaos/inject', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type: chaosType })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showNotification(data.message, 'success');
+                } else {
+                    showNotification(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error injecting chaos:', error);
+                showNotification('Failed to inject chaos', 'error');
+            });
+        }
+
+        
+async function reinitializeTopology() {
+    const initBtn = document.getElementById('initTopologyBtn');
+    const topologyLoading = document.getElementById('topologyLoading');
+
+    // UI feedback
+    initBtn.disabled = true;
+    topologyLoading.style.display = 'inline-block';
+    showNotification('Reinitializing topology...', 'info');
+
+    try {
+        const resp = await fetch('/api/topology/init', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                num_gpus: 8,
+                num_switches: 4,
+                interconnect_types: ['PCIe', 'NVLink', 'UALink']
+            })
+        });
+
+        const data = await resp.json();
+
+        if (resp.ok && data.status === 'success') {
+            // Clear UI sections so the re-render looks clean
+            document.getElementById('alertsList').innerHTML = '<div style="text-align: center; color: #888; margin-top: 50px;">No alerts detected</div>';
+            document.getElementById('routingLog').innerHTML = '<div style="text-align: center; color: #888; margin-top: 30px;">No routing decisions yet</div>';
+            document.getElementById('alertCount').textContent = '0 Active';
+            document.getElementById('routingCount').textContent = '0 Total';
+            // Reset KPI placeholders while new telemetry comes in
+            document.getElementById('totalLinks').textContent = data.details.total_links || 0;
+            document.getElementById('healthyLinks').textContent = '0';
+            document.getElementById('healthPercentage').textContent = '0%';
+            document.getElementById('avgLatency').textContent = '0μs';
+            document.getElementById('avgUtilization').textContent = '0%';
+            document.getElementById('activeAlerts').textContent = '0';
+
+            // short delay to let backend finish restarting telemetry thread if it was running
+            await new Promise(r => setTimeout(r, 600));
+
+            // Force reload of topology visualization
+            if (typeof loadTopology === 'function') {
+                if (topologyRenderer) {
+    topologyRenderer.clearTopology();
+}
+
+                loadTopology(); // your topology.js should re-fetch /api/topology and redraw
+            } else {
+                // fallback: attempt to fetch topology to prime data
+                fetch('/api/topology').then(() => { /* ignore */ });
+            }
+
+            showNotification('Topology reinitialized', 'success');
+        } else {
+            const msg = data.message || JSON.stringify(data);
+            showNotification(`Failed to reinitialize: ${msg}`, 'error');
+            console.error('Topology init failed', data);
+        }
+    } catch (err) {
+        console.error('Error reinitializing topology:', err);
+        showNotification('Error reinitializing topology', 'error');
+    } finally {
+        initBtn.disabled = false;
+        topologyLoading.style.display = 'none';
+    }
+}
+
+
+
+        function updateSystemStatus() {
+            const statusEl = document.getElementById('systemStatus');
+            if (systemRunning) {
+                statusEl.className = 'status-indicator status-running';
+                statusEl.textContent = 'System Running';
+            } else {
+                statusEl.className = 'status-indicator status-stopped';
+                statusEl.textContent = 'System Stopped';
+            }
+        }
+
+        function startUpdates() {
+            if (updateInterval) clearInterval(updateInterval);
+            
+            updateInterval = setInterval(() => {
+                updateKPIs();
+                updateAlerts();
+                updateRoutingLog();
+                updateCharts();
+                
+                if (window.updateTopologyHealth) {
+                    updateTopologyHealth();
+                }
+            }, 3000);
+        }
+
+        function updateKPIs() {
+            fetch('/api/kpis')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('totalLinks').textContent = data.total_links || 0;
+                    document.getElementById('healthyLinks').textContent = data.healthy_links || 0;
+                    document.getElementById('healthPercentage').textContent = `${Math.round(data.health_percentage || 0)}%`;
+                    document.getElementById('avgLatency').textContent = `${data.avg_latency || 0}μs`;
+                    document.getElementById('avgUtilization').textContent = `${Math.round(data.avg_utilization * 100 || 0)}%`;
+                    document.getElementById('activeAlerts').textContent = data.active_alerts || 0;
+                })
+                .catch(error => console.error('Error updating KPIs:', error));
+        }
+
+function updateAlerts() {
+    fetch('/api/telemetry/alerts')
+        .then(response => response.json())
+        .then(data => {
+            const alertsList = document.getElementById('alertsList');
+            const alertCount = document.getElementById('alertCount');
+
+            // Backend returns { total_alerts: N, alerts: [...] }
+            const alerts = Array.isArray(data.alerts) ? data.alerts : [];
+            const total = data.total_alerts ?? alerts.length;
+
+            if (!alerts.length) {
+                alertsList.innerHTML = '<div style="text-align: center; color: #888; margin-top: 50px;">No alerts detected</div>';
+                alertCount.textContent = '0 Active';
+            } else {
+                alertCount.textContent = `${total} Active`;
+                alertsList.innerHTML = alerts.slice(0, 10).map(alert => {
+                    const timestamp = alert.timestamp ? new Date(alert.timestamp * 1000).toLocaleTimeString() : '';
+                    const severity = alert.severity || 'info';
+                    const msg = alert.message || JSON.stringify(alert);
+                    return `
+                        <div class="alert-item ${severity}">
+                            <div class="alert-timestamp">${timestamp}</div>
+                            <div class="alert-message">${msg}</div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        })
+        .catch(error => console.error('Error updating alerts:', error));
+}
+
+function updateRoutingLog() {
+    fetch('/api/routing/decisions')
+        .then(response => response.json())
+        .then(data => {
+            const routingLog = document.getElementById('routingLog');
+            const routingCount = document.getElementById('routingCount');
+
+            // Backend returns { total_decisions: N, routing_decisions: [...] }
+            const decisions = Array.isArray(data.routing_decisions) ? data.routing_decisions : [];
+            const total = data.total_decisions ?? decisions.length;
+
+            routingCount.textContent = `${total} Total`;
+
+            if (!decisions.length) {
+                routingLog.innerHTML = '<div style="text-align: center; color: #888; margin-top: 30px;">No routing decisions yet</div>';
+            } else {
+                // show most recent 10
+                routingLog.innerHTML = decisions.slice(0, 10).map(decision => {
+                    const timestamp = decision.timestamp ? new Date(decision.timestamp * 1000).toLocaleTimeString() : '';
+                    const oldRoute = Array.isArray(decision.old_route) ? decision.old_route.join(' → ') : (decision.old_route || '');
+                    const newRoute = Array.isArray(decision.new_route) ? decision.new_route.join(' → ') : (decision.new_route || '');
+                    const reason = decision.reason || '';
+                    return `
+                        <div class="log-entry reroute">
+                            [${timestamp}] Job ${decision.job_id || 'N/A'}: ${oldRoute} → ${newRoute} (${reason})
+                        </div>
+                    `;
+                }).join('');
+            }
+        })
+        .catch(error => console.error('Error updating routing log:', error));
+}
+
+          function showNotification(message, type = 'info') {
+            // Simple notification system
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 15px 20px;
+                border-radius: 8px;
+                color: white;
+                font-weight: 500;
+                z-index: 10000;
+                max-width: 400px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                animation: slideIn 0.3s ease;
+            `;
+            
+            const colors = {
+                success: 'linear-gradient(135deg, #27ae60, #2ecc71)',
+                error: 'linear-gradient(135deg, #e74c3c, #c0392b)',
+                warning: 'linear-gradient(135deg, #f39c12, #e67e22)',
+                info: 'linear-gradient(135deg, #3498db, #2980b9)'
+            };
+            
+            notification.style.background = colors[type] || colors.info;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        // Add CSS animations
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
